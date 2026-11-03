@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#050506" />
+    <title>VIRECMG — Controle Financeiro Pessoal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div class="bg" aria-hidden="true">
+      <div class="orb o1"></div>
+      <div class="orb o2"></div>
+      <div class="orb o3"></div>
+    </div>
+    <div class="grain" aria-hidden="true"></div>
+
+    <nav class="topnav bar" aria-label="Principal">
+      <a class="brand" href="#" data-view="dashboard"><span class="orange">@</span>virecmg</a>
+      <div class="nav-links">
+        <button class="nav-btn active" data-view="dashboard">Painel</button>
+        <button class="nav-btn" data-view="transactions">Lancamentos</button>
+        <button class="nav-btn" data-view="recurring">Fixos</button>
+        <button class="nav-btn" data-view="accounts">Contas</button>
+        <button class="nav-btn" data-view="import">Importar</button>
+        <button class="nav-btn" data-view="reports">PDF</button>
+        <button class="nav-btn" data-view="profiles">Perfis</button>
+      </div>
+      <button class="nav-cta" id="btnNewTx">Novo lancamento</button>
+      <button class="menu-btn" id="menuBtn" aria-label="Abrir menu">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+    </nav>
+
+    <div class="drawer bar" id="drawer">
+      <button data-view="dashboard">Painel</button>
+      <button data-view="transactions">Lancamentos</button>
+      <button data-view="recurring">Fixos e variaveis</button>
+      <button data-view="accounts">Contas</button>
+      <button data-view="import">Importar CSV</button>
+      <button data-view="reports">Relatorios</button>
+      <button data-view="profiles">Perfis</button>
+    </div>
+
+    <main class="page">
+      <header class="hero-head wrap">
+        <div class="pill"><span class="dot"></span> <span id="liveHint">Perfil ativo</span></div>
+        <h1 id="viewTitle">Painel</h1>
+        <p class="lead" id="viewSubtitle">Visao consolidada do mes</p>
+        <div class="filters">
+          <label class="field">
+            <span>Perfil</span>
+            <select id="profileSelect"></select>
+          </label>
+          <label class="field">
+            <span>Conta</span>
+            <select id="accountFilter">
+              <option value="all">Todas as contas</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Mes</span>
+            <input type="month" id="monthPicker" />
+          </label>
+          <button class="btn btn-ghost" id="btnExportPdf">Gerar PDF do mes</button>
+        </div>
+      </header>
+
+      <section id="view-dashboard" class="view active wrap">
+        <div class="kpi-grid">
+          <article class="kpi glass">
+            <span>Saldo em conta agora</span>
+            <strong id="kpiBalance">R$ 0,00</strong>
+            <em id="kpiBalanceHint">acumulado de todos os lancamentos</em>
+          </article>
+          <article class="kpi glass income">
+            <span>Receitas do mes</span>
+            <strong id="kpiIncome">R$ 0,00</strong>
+            <em id="kpiIncomeHint">0 lancamentos</em>
+          </article>
+          <article class="kpi glass expense">
+            <span>Despesas do mes</span>
+            <strong id="kpiExpense">R$ 0,00</strong>
+            <em id="kpiExpenseHint">0 lancamentos</em>
+          </article>
+          <article class="kpi glass profit">
+            <span>Lucro do mes</span>
+            <strong id="kpiProfit">R$ 0,00</strong>
+            <em id="kpiProfitHint">receitas menos despesas</em>
+          </article>
+          <article class="kpi glass goal">
+            <span>Meta do mes</span>
+            <strong id="kpiGoal">R$ 0,00</strong>
+            <div class="progress"><i id="goalBar"></i></div>
+            <em id="kpiGoalHint">0% da meta</em>
+          </article>
+        </div>
+
+        <div class="account-strip" id="accountStrip"></div>
+
+        <div class="chart-grid">
+          <article class="panel glass">
+            <header>
+              <p class="kicker">Comparativo</p>
+              <h3>Receita x Despesas</h3>
+            </header>
+            <canvas id="chartIncomeExpense"></canvas>
+          </article>
+          <article class="panel glass">
+            <header>
+              <p class="kicker">Saidas</p>
+              <h3>Despesas por categoria</h3>
+            </header>
+            <canvas id="chartExpenseCat"></canvas>
+          </article>
+          <article class="panel glass">
+            <header>
+              <p class="kicker">Entradas</p>
+              <h3>Entradas por categoria</h3>
+            </header>
+            <canvas id="chartIncomeCat"></canvas>
+          </article>
+          <article class="panel glass wide">
+            <header>
+              <p class="kicker">Historico</p>
+              <h3>Comparativo mensal</h3>
+            </header>
+            <canvas id="chartMonthly"></canvas>
+          </article>
+        </div>
+      </section>
+
+      <section id="view-transactions" class="view wrap">
+        <div class="toolbar">
+          <input type="search" id="txSearch" placeholder="Buscar descricao, categoria..." />
+          <select id="txTypeFilter">
+            <option value="all">Todos os tipos</option>
+            <option value="income">Receitas</option>
+            <option value="expense">Despesas</option>
+          </select>
+          <select id="txPayFilter">
+            <option value="all">Todas as formas</option>
+            <option value="pix">PIX</option>
+            <option value="credit">Cartao de credito</option>
+            <option value="debit">Debito</option>
+            <option value="boleto">Boleto</option>
+            <option value="cash">Dinheiro</option>
+            <option value="transfer">Transferencia</option>
+          </select>
+        </div>
+        <div class="table-wrap glass">
+          <table>
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Descricao</th>
+                <th>Conta</th>
+                <th>Tipo</th>
+                <th>Categoria</th>
+                <th>Forma</th>
+                <th>Recorrencia</th>
+                <th class="num">Valor</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="txTable"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="view-recurring" class="view wrap">
+        <div class="split">
+          <article class="panel glass">
+            <header>
+              <p class="kicker">Recorrente</p>
+              <h3>Entradas fixas</h3>
+              <p>Repetem todo mes ate voce retirar</p>
+            </header>
+            <ul class="recurring-list" id="fixedList"></ul>
+          </article>
+          <article class="panel glass">
+            <header>
+              <p class="kicker">Pontual</p>
+              <h3>Entradas variaveis</h3>
+              <p>Lancamentos pontuais do mes</p>
+            </header>
+            <ul class="recurring-list" id="variableList"></ul>
+          </article>
+        </div>
+      </section>
+
+      <section id="view-accounts" class="view wrap">
+        <div class="split">
+          <article class="panel glass">
+            <header>
+              <p class="kicker">Divisao</p>
+              <h3>Contas deste perfil</h3>
+              <p>Cada perfil tem suas proprias contas e saldos</p>
+            </header>
+            <ul class="account-list" id="accountList"></ul>
+          </article>
+          <article class="panel glass">
+            <header>
+              <p class="kicker">Nova</p>
+              <h3>Adicionar conta</h3>
+            </header>
+            <form id="accountForm" class="form">
+              <label class="field">
+                <span>Nome da conta</span>
+                <input name="name" required placeholder="Ex: Nubank, Caixa, Carteira" />
+              </label>
+              <label class="field">
+                <span>Banco / instituicao</span>
+                <input name="bank" required placeholder="Ex: Nubank, Itau, Inter" />
+              </label>
+              <label class="field">
+                <span>Tipo</span>
+                <select name="type" required>
+                  <option value="checking">Corrente</option>
+                  <option value="savings">Poupanca</option>
+                  <option value="credit">Cartao de credito</option>
+                  <option value="wallet">Carteira / dinheiro</option>
+                  <option value="invest">Investimentos</option>
+                </select>
+              </label>
+              <button class="btn btn-light" type="submit">Criar conta neste perfil</button>
+            </form>
+          </article>
+        </div>
+      </section>
+
+      <section id="view-import" class="view wrap">
+        <article class="panel glass import-panel">
+          <header>
+            <p class="kicker">Extrato</p>
+            <h3>Importar fatura ou extrato</h3>
+            <p>CSV com colunas: data, descricao, tipo, categoria e valor. Lancamentos entram na conta selecionada do perfil ativo.</p>
+          </header>
+          <div class="import-box" id="dropzone">
+            <input type="file" id="csvFile" accept=".csv,text/csv" />
+            <p>Arraste o CSV aqui ou clique para selecionar</p>
+            <small>Separador virgula ou ponto e virgula. Datas dd/mm/aaaa ou aaaa-mm-dd.</small>
+          </div>
+          <div class="import-map" id="importPreview"></div>
+        </article>
+      </section>
+
+      <section id="view-reports" class="view wrap">
+        <article class="panel glass">
+          <header>
+            <p class="kicker">Exportar</p>
+            <h3>Resumo para PDF</h3>
+            <p>O relatorio inclui saldo, contas, receitas, despesas, lucro, meta e tabelas por categoria.</p>
+          </header>
+          <div class="report-preview" id="reportPreview"></div>
+          <button class="btn btn-light" id="btnExportPdf2">Baixar PDF do mes</button>
+        </article>
+      </section>
+
+      <section id="view-profiles" class="view wrap">
+        <div class="split">
+          <article class="panel glass">
+            <header>
+              <p class="kicker">Pessoas</p>
+              <h3>Perfis</h3>
+              <p>Cada perfil tem contas, lancamentos e meta proprios</p>
+            </header>
+            <ul class="profile-list" id="profileList"></ul>
+          </article>
+          <article class="panel glass">
+            <header>
+              <p class="kicker">Novo</p>
+              <h3>Criar perfil</h3>
+            </header>
+            <form id="profileForm" class="form">
+              <label class="field">
+                <span>Nome</span>
+                <input name="name" required placeholder="Ex: Pessoal, Empresa, Casa" />
+              </label>
+              <label class="field">
+                <span>Meta mensal de lucro</span>
+                <input name="goal" type="number" min="0" step="0.01" value="3000" />
+              </label>
+              <label class="field">
+                <span>Cor</span>
+                <input name="color" type="color" value="#ABE054" />
+              </label>
+              <button class="btn btn-light" type="submit">Criar perfil</button>
+            </form>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <nav class="dock bar" aria-label="Navegacao mobile">
+      <button data-view="dashboard" class="active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        Painel
+      </button>
+      <button data-view="transactions">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        Lancar
+      </button>
+      <button data-view="accounts">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+        Contas
+      </button>
+      <button data-view="profiles">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        Perfis
+      </button>
+    </nav>
+
+    <dialog id="txDialog">
+      <form id="txForm" class="form dialog-form">
+        <h3 id="txDialogTitle">Novo lancamento</h3>
+        <input type="hidden" name="id" />
+        <div class="form-grid">
+          <label class="field">
+            <span>Data</span>
+            <input name="date" type="date" required />
+          </label>
+          <label class="field">
+            <span>Tipo</span>
+            <select name="type" required>
+              <option value="income">Receita</option>
+              <option value="expense">Despesa</option>
+            </select>
+          </label>
+          <label class="field span-2">
+            <span>Descricao</span>
+            <input name="description" required placeholder="Ex: Salario, Aluguel, Mercado" />
+          </label>
+          <label class="field">
+            <span>Conta</span>
+            <select name="accountId" required></select>
+          </label>
+          <label class="field">
+            <span>Categoria</span>
+            <select name="category" required></select>
+          </label>
+          <label class="field">
+            <span>Valor</span>
+            <input name="amount" type="number" min="0.01" step="0.01" required />
+          </label>
+          <label class="field">
+            <span>Forma de pagamento</span>
+            <select name="paymentMethod" required>
+              <option value="pix">PIX</option>
+              <option value="credit">Cartao de credito</option>
+              <option value="debit">Debito</option>
+              <option value="boleto">Boleto</option>
+              <option value="cash">Dinheiro</option>
+              <option value="transfer">Transferencia</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Recorrencia</span>
+            <select name="recurrence" required>
+              <option value="variable">Variavel</option>
+              <option value="fixed">Fixa</option>
+            </select>
+          </label>
+        </div>
+        <div class="dialog-actions">
+          <button type="button" class="btn btn-ghost" id="txCancel">Cancelar</button>
+          <button type="submit" class="btn btn-light">Salvar</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

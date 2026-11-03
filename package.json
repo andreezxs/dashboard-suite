@@ -1,0 +1,19 @@
+{
+  "name": "virecmg",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0 --port 5173",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0 --port 5173"
+  },
+  "dependencies": {
+    "chart.js": "^4.4.7",
+    "jspdf": "^2.5.2",
+    "jspdf-autotable": "^3.8.4"
+  },
+  "devDependencies": {
+    "vite": "^6.0.7"
+  }
+}

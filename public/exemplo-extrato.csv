@@ -1,0 +1,9 @@
+data;descricao;tipo;categoria;valor;forma
+03/11/2026;Salario novembro;receita;Salario;8500,00;transferencia
+04/11/2026;Aluguel;despesa;Moradia;2100,00;pix
+05/11/2026;Supermercado Extra;despesa;Alimentacao;432,90;debito
+06/11/2026;Uber;despesa;Transporte;38,50;credit
+07/11/2026;Freelance landing page;receita;Freelance;1200,00;pix
+08/11/2026;Farmacia;despesa;Saude;89,70;debit
+10/11/2026;Conta de luz;despesa;Contas;186,40;boleto
+12/11/2026;Dividendos ITSA4;receita;Investimentos;215,30;transferencia
