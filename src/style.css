@@ -131,6 +131,7 @@ input[type="color"] {
   top: -28vw;
   left: -22vw;
   background: radial-gradient(circle at 30% 30%, var(--green), transparent 68%);
+  animation: orbFloat 18s ease-in-out infinite;
 }
 
 .o2 {
@@ -139,6 +140,7 @@ input[type="color"] {
   bottom: -24vw;
   right: -18vw;
   background: radial-gradient(circle at 70% 70%, var(--orange), transparent 68%);
+  animation: orbFloat 22s ease-in-out infinite reverse;
 }
 
 .o3 {
@@ -148,6 +150,12 @@ input[type="color"] {
   left: 48%;
   background: radial-gradient(circle at 50% 50%, var(--purple), transparent 70%);
   opacity: 0.4;
+  animation: orbFloat 16s ease-in-out infinite 2s;
+}
+
+@keyframes orbFloat {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(3%, -4%) scale(1.06); }
 }
 
 .grain {
@@ -401,7 +409,21 @@ h2, h3 {
 .btn.primary { background: var(--offwhite); color: var(--black); }
 
 .view { display: none; }
-.view.active { display: block; }
+.view.active {
+  display: block;
+  animation: fadeUp 0.45s var(--apple) both;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 
 .kpi-grid,
 .chart-grid,
@@ -431,7 +453,19 @@ h2, h3 {
 .kpi,
 .panel {
   padding: 18px;
+  animation: fadeUp 0.55s var(--apple) both;
 }
+
+.kpi:nth-child(1) { animation-delay: 0.04s; }
+.kpi:nth-child(2) { animation-delay: 0.08s; }
+.kpi:nth-child(3) { animation-delay: 0.12s; }
+.kpi:nth-child(4) { animation-delay: 0.16s; }
+.kpi:nth-child(5) { animation-delay: 0.2s; }
+
+.panel:nth-child(1) { animation-delay: 0.08s; }
+.panel:nth-child(2) { animation-delay: 0.14s; }
+.panel:nth-child(3) { animation-delay: 0.2s; }
+.panel:nth-child(4) { animation-delay: 0.26s; }
 
 .kpi span {
   color: var(--dim);
@@ -473,6 +507,7 @@ h2, h3 {
   height: 100%;
   width: 0;
   background: linear-gradient(90deg, var(--orange), var(--green));
+  transition: width 0.7s var(--apple);
 }
 
 .panel header { margin-bottom: 12px; }
@@ -490,6 +525,22 @@ canvas {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   max-width: 100%;
+  position: relative;
+  animation: fadeUp 0.5s var(--apple) both;
+}
+
+.table-wrap::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent 38%, rgba(255, 255, 255, 0.08) 50%, transparent 62%);
+  transform: translateX(-120%);
+  animation: tableShine 1.6s var(--apple) 0.35s both;
+}
+
+@keyframes tableShine {
+  to { transform: translateX(120%); }
 }
 
 .table-wrap table {
@@ -507,6 +558,7 @@ td {
   text-align: left;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   white-space: nowrap;
+  transition: background 0.28s var(--apple), color 0.28s var(--apple), box-shadow 0.28s var(--apple);
 }
 
 th {
@@ -518,6 +570,46 @@ th {
 }
 
 .num { text-align: right; }
+
+tbody tr {
+  animation: rowIn 0.48s var(--apple) both;
+  animation-delay: calc(var(--i, 0) * 48ms);
+}
+
+tbody tr td:first-child {
+  box-shadow: inset 0 0 0 0 transparent;
+}
+
+tbody tr:hover td {
+  background: rgba(171, 224, 84, 0.07);
+}
+
+tbody tr:hover td:first-child {
+  box-shadow: inset 3px 0 0 var(--green);
+}
+
+tbody tr:hover .tag.income {
+  background: rgba(171, 224, 84, 0.16);
+}
+
+tbody tr:hover .tag.expense {
+  background: rgba(250, 85, 60, 0.16);
+}
+
+tbody tr .btn {
+  transition: transform 0.25s var(--spring), opacity 0.2s, background 0.2s;
+}
+
+@keyframes rowIn {
+  from {
+    opacity: 0;
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
 
 .tag {
   display: inline-flex;
@@ -551,6 +643,17 @@ th {
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.03);
   flex-wrap: wrap;
+  animation: rowIn 0.45s var(--apple) both;
+  animation-delay: calc(var(--i, 0) * 50ms);
+  transition: transform 0.28s var(--spring), background 0.22s, border-color 0.22s;
+}
+
+.recurring-list li:hover,
+.profile-list li:hover,
+.account-list li:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(171, 224, 84, 0.28);
 }
 
 .account-strip {
@@ -566,6 +669,14 @@ th {
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
   min-height: 118px;
+  animation: fadeUp 0.5s var(--apple) both;
+  animation-delay: calc(var(--i, 0) * 70ms);
+  transition: transform 0.28s var(--spring), border-color 0.22s;
+}
+
+.account-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(171, 224, 84, 0.32);
 }
 
 .account-card small {

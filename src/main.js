@@ -250,6 +250,16 @@ function fillAccountSelects() {
   }
 }
 
+function replayTableMotion(root) {
+  const rows = root.querySelectorAll('tbody tr, .recurring-list li, .account-list li, .profile-list li')
+  rows.forEach((row, i) => {
+    row.style.animation = 'none'
+    row.offsetHeight
+    row.style.setProperty('--i', String(i))
+    row.style.animation = ''
+  })
+}
+
 function setView(name) {
   $$('[data-view]').forEach((b) => {
     if (b.tagName === 'A') return
@@ -260,6 +270,8 @@ function setView(name) {
   $('#viewTitle').textContent = title
   $('#viewSubtitle').innerHTML = sub
   $('#drawer').classList.remove('open')
+  const active = $(`#view-${name}`)
+  if (active) replayTableMotion(active)
 }
 
 function groupBy(list, key) {
@@ -288,7 +300,44 @@ function upsertChart(id, config) {
   charts[id] = new Chart(canvas, config)
 }
 
+function moneyPct(part, total) {
+  if (!total) return '0%'
+  return `${Math.round((Math.abs(part) / Math.abs(total)) * 100)}%`
+}
+
+const percentLabels = {
+  id: 'percentLabels',
+  afterDatasetsDraw(chart) {
+    const type = chart.config.type
+    if (type !== 'doughnut' && type !== 'bar') return
+    const { ctx } = chart
+    ctx.save()
+    ctx.font = '700 11px Inter, sans-serif'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    chart.data.datasets.forEach((dataset, di) => {
+      const meta = chart.getDatasetMeta(di)
+      const total = dataset.data.reduce((sum, n) => sum + Math.abs(Number(n || 0)), 0)
+      meta.data.forEach((el, i) => {
+        const value = Number(dataset.data[i] || 0)
+        if (!value || !total) return
+        const label = moneyPct(value, total)
+        if (type === 'doughnut') {
+          const { x, y } = el.tooltipPosition()
+          ctx.fillStyle = '#F5F2EA'
+          ctx.fillText(label, x, y)
+          return
+        }
+        ctx.fillStyle = '#F5F2EA'
+        ctx.fillText(label, el.x, el.y - 10)
+      })
+    })
+    ctx.restore()
+  }
+}
+
 function chartDefaults() {
+  Chart.register(percentLabels)
   Chart.defaults.color = 'rgba(245, 242, 234, 0.64)'
   Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.08)'
   Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "SF Pro Display", Inter, sans-serif'
@@ -323,10 +372,10 @@ function renderAccountStrip() {
     el.innerHTML = '<article class="account-card"><small>Contas</small><strong>Nenhuma conta</strong><em>Crie uma na aba Contas</em></article>'
     return
   }
-  el.innerHTML = accounts.map((a) => {
+  el.innerHTML = accounts.map((a, i) => {
     const t = totals(accountTx(a.id))
     return `
-      <article class="account-card" data-filter-account="${a.id}">
+      <article class="account-card" data-filter-account="${a.id}" style="--i:${i}">
         <small>${a.bank} · ${ACCOUNT_TYPE_LABELS[a.type] || a.type}</small>
         <strong>${money(t.profit)}</strong>
         <em>${a.name}</em>
@@ -343,6 +392,7 @@ function renderCharts() {
   const months = lastMonths(6)
   const seriesIn = months.map((m) => totals(allTx().filter((x) => x.date.startsWith(m))).income)
   const seriesOut = months.map((m) => totals(allTx().filter((x) => x.date.startsWith(m))).expense)
+  const noHover = { events: [], plugins: { tooltip: { enabled: false } } }
 
   upsertChart('chartIncomeExpense', {
     type: 'bar',
@@ -355,7 +405,9 @@ function renderCharts() {
       }]
     },
     options: {
-      plugins: { legend: { display: false } },
+      ...noHover,
+      layout: { padding: { top: 18 } },
+      plugins: { legend: { display: false }, tooltip: { enabled: false } },
       scales: { y: { beginAtZero: true } }
     }
   })
@@ -366,7 +418,10 @@ function renderCharts() {
       labels: Object.keys(expenses),
       datasets: [{ data: Object.values(expenses), backgroundColor: PALETTE, borderWidth: 0 }]
     },
-    options: { plugins: { legend: { position: 'bottom' } } }
+    options: {
+      ...noHover,
+      plugins: { legend: { position: 'bottom' }, tooltip: { enabled: false } }
+    }
   })
 
   upsertChart('chartIncomeCat', {
@@ -375,7 +430,10 @@ function renderCharts() {
       labels: Object.keys(incomes),
       datasets: [{ data: Object.values(incomes), backgroundColor: PALETTE, borderWidth: 0 }]
     },
-    options: { plugins: { legend: { position: 'bottom' } } }
+    options: {
+      ...noHover,
+      plugins: { legend: { position: 'bottom' }, tooltip: { enabled: false } }
+    }
   })
 
   upsertChart('chartMonthly', {
@@ -388,7 +446,8 @@ function renderCharts() {
       ]
     },
     options: {
-      plugins: { legend: { position: 'bottom' } },
+      ...noHover,
+      plugins: { legend: { position: 'bottom' }, tooltip: { enabled: false } },
       scales: { y: { beginAtZero: true } }
     }
   })
@@ -414,8 +473,8 @@ function renderTable() {
     body.innerHTML = `<tr><td colspan="9" class="empty">Nenhum lancamento neste filtro.</td></tr>`
     return
   }
-  body.innerHTML = rows.map((t) => `
-    <tr>
+  body.innerHTML = rows.map((t, i) => `
+    <tr style="--i:${i}">
       <td>${t.date.split('-').reverse().join('/')}</td>
       <td>${t.description}</td>
       <td>${accountById(t.accountId)?.name || '-'}</td>
@@ -439,8 +498,8 @@ function renderRecurring() {
       el.innerHTML = '<li class="muted">Nada por aqui ainda.</li>'
       return
     }
-    el.innerHTML = items.map((t) => `
-      <li>
+    el.innerHTML = items.map((t, i) => `
+      <li style="--i:${i}">
         <div>
           <strong>${t.description}</strong>
           <div class="muted">${accountById(t.accountId)?.name || '-'} · ${t.category} · ${PAYMENT_LABELS[t.paymentMethod]} · ${money(t.amount)}</div>
@@ -463,10 +522,10 @@ function renderAccounts() {
     el.innerHTML = '<li class="muted">Nenhuma conta neste perfil.</li>'
     return
   }
-  el.innerHTML = accounts.map((a) => {
+  el.innerHTML = accounts.map((a, i) => {
     const t = totals(accountTx(a.id))
     return `
-      <li>
+      <li style="--i:${i}">
         <div>
           <strong>${a.name}</strong>
           <div class="muted">${a.bank} · ${ACCOUNT_TYPE_LABELS[a.type] || a.type} · saldo ${money(t.profit)}</div>
@@ -481,10 +540,10 @@ function renderAccounts() {
 }
 
 function renderProfiles() {
-  $('#profileList').innerHTML = state.profiles.map((p) => {
+  $('#profileList').innerHTML = state.profiles.map((p, i) => {
     const nAcc = state.accounts.filter((a) => a.profileId === p.id).length
     return `
-      <li>
+      <li style="--i:${i}">
         <div>
           <strong style="color:${p.color}">${p.name}</strong>
           <div class="muted">Meta ${money(p.goal)} · ${nAcc} conta(s)</div>
@@ -550,25 +609,141 @@ function exportPdf() {
   const profile = activeProfile()
   const t = totals()
   const life = totals(allTx())
-  const doc = new jsPDF()
-  doc.setFontSize(18)
-  doc.text(`VIRECMG — ${profile.name}`, 14, 18)
-  doc.setFontSize(11)
-  doc.text(`Relatorio mensal ${monthLabel(month)}`, 14, 26)
-  doc.text(`Saldo em conta agora: ${money(life.profit)}`, 14, 38)
-  doc.text(`Receitas: ${money(t.income)}`, 14, 46)
-  doc.text(`Despesas: ${money(t.expense)}`, 14, 54)
-  doc.text(`Lucro: ${money(t.profit)}`, 14, 62)
-  doc.text(`Meta do mes: ${money(profile.goal)}`, 14, 70)
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  const pageW = doc.internal.pageSize.getWidth()
+  const pageH = doc.internal.pageSize.getHeight()
+  const generatedAt = new Date().toLocaleString('pt-BR')
 
-  autoTable(doc, {
-    startY: 80,
-    head: [['Conta', 'Saldo']],
-    body: profileAccounts().map((a) => [a.name, money(totals(accountTx(a.id)).profit)])
+  const C = {
+    green: [171, 224, 84],
+    orange: [250, 85, 60],
+    purple: [191, 90, 242],
+    black: [5, 5, 6],
+    offwhite: [245, 242, 234],
+    muted: [120, 118, 112],
+    line: [230, 226, 216]
+  }
+
+  const tableTheme = {
+    margin: { top: 32, bottom: 22, left: 14, right: 14 },
+    styles: {
+      fontSize: 8,
+      cellPadding: 3,
+      textColor: C.black,
+      lineColor: C.line,
+      lineWidth: 0.15,
+      font: 'helvetica'
+    },
+    headStyles: {
+      fillColor: C.black,
+      textColor: C.green,
+      fontStyle: 'bold',
+      fontSize: 8,
+      cellPadding: 3.4
+    },
+    alternateRowStyles: { fillColor: C.offwhite },
+    bodyStyles: { fillColor: [255, 255, 255] }
+  }
+
+  const nextTableY = () => (doc.lastAutoTable?.finalY || 96) + 10
+
+  const paintChrome = () => {
+    const total = doc.internal.getNumberOfPages()
+    for (let i = 1; i <= total; i++) {
+      doc.setPage(i)
+
+      doc.setFillColor(...C.black)
+      doc.rect(0, 0, pageW, 24, 'F')
+      doc.setFillColor(...C.orange)
+      doc.rect(0, 0, 3.4, 24, 'F')
+      doc.setFillColor(...C.green)
+      doc.rect(0, 24, pageW, 2.2, 'F')
+      doc.setFillColor(...C.purple)
+      doc.rect(pageW - 16, 0, 16, 24, 'F')
+
+      doc.setTextColor(...C.offwhite)
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(13)
+      doc.text('@virecmg', 10, 10)
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(8)
+      doc.setTextColor(...C.green)
+      doc.text('Controle Financeiro Pessoal', 10, 16.5)
+
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(9)
+      doc.setTextColor(...C.offwhite)
+      doc.text(profile.name, pageW - 20, 10, { align: 'right' })
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(8)
+      doc.text(`Relatorio ${monthLabel(month)}`, pageW - 20, 16.5, { align: 'right' })
+
+      doc.setFillColor(...C.black)
+      doc.rect(0, pageH - 16, pageW, 16, 'F')
+      doc.setFillColor(...C.orange)
+      doc.rect(0, pageH - 16, pageW, 1.6, 'F')
+      doc.setFillColor(...C.green)
+      doc.rect(0, pageH - 14.4, 48, 1.2, 'F')
+
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(8)
+      doc.setTextColor(...C.offwhite)
+      doc.text('VIRECMG  ·  Relatorio mensal', 10, pageH - 7)
+      doc.setTextColor(...C.green)
+      doc.text(`Pagina ${i} de ${total}`, pageW / 2, pageH - 7, { align: 'center' })
+      doc.setTextColor(...C.offwhite)
+      doc.text(generatedAt, pageW - 10, pageH - 7, { align: 'right' })
+    }
+  }
+
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(16)
+  doc.setTextColor(...C.black)
+  doc.text('Resumo do mes', 14, 36)
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(9)
+  doc.setTextColor(...C.muted)
+  doc.text(`${profile.name}  ·  ${monthLabel(month)}  ·  contas filtradas: ${accountFilter === 'all' ? 'todas' : (accountById(accountFilter)?.name || '-')}`, 14, 42)
+
+  const cards = [
+    ['Saldo em conta', money(life.profit), C.offwhite, C.black],
+    ['Receitas', money(t.income), C.green, C.black],
+    ['Despesas', money(t.expense), C.orange, C.offwhite],
+    ['Lucro', money(t.profit), C.black, C.offwhite],
+    ['Meta do mes', money(profile.goal), C.purple, C.offwhite]
+  ]
+  const gap = 4
+  const cardW = (pageW - 28 - gap * 4) / 5
+  cards.forEach((card, i) => {
+    const x = 14 + i * (cardW + gap)
+    const y = 48
+    doc.setFillColor(...card[2])
+    doc.roundedRect(x, y, cardW, 22, 2, 2, 'F')
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(6.5)
+    doc.setTextColor(...card[3])
+    doc.text(card[0].toUpperCase(), x + 3, y + 7)
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(8.5)
+    doc.text(card[1], x + 3, y + 16)
   })
 
   autoTable(doc, {
-    startY: (doc.lastAutoTable?.finalY || 90) + 10,
+    ...tableTheme,
+    startY: 78,
+    head: [['Conta', 'Banco', 'Tipo', 'Saldo']],
+    body: profileAccounts().map((a) => [
+      a.name,
+      a.bank,
+      ACCOUNT_TYPE_LABELS[a.type] || a.type,
+      money(totals(accountTx(a.id)).profit)
+    ]),
+    columnStyles: { 3: { halign: 'right', fontStyle: 'bold' } }
+  })
+
+  autoTable(doc, {
+    ...tableTheme,
+    startY: nextTableY(),
     head: [['Data', 'Descricao', 'Conta', 'Tipo', 'Categoria', 'Forma', 'Valor']],
     body: monthTx().sort((a, b) => a.date.localeCompare(b.date)).map((x) => [
       x.date.split('-').reverse().join('/'),
@@ -578,22 +753,29 @@ function exportPdf() {
       x.category,
       PAYMENT_LABELS[x.paymentMethod] || x.paymentMethod,
       money(x.amount)
-    ])
+    ]),
+    columnStyles: { 6: { halign: 'right', fontStyle: 'bold' } }
   })
 
   const expenses = groupBy(monthTx().filter((x) => x.type === 'expense'), 'category')
   const incomes = groupBy(monthTx().filter((x) => x.type === 'income'), 'category')
   autoTable(doc, {
-    startY: (doc.lastAutoTable?.finalY || 90) + 10,
+    ...tableTheme,
+    startY: nextTableY(),
     head: [['Categoria de despesa', 'Total']],
-    body: Object.entries(expenses).map(([k, v]) => [k, money(v)])
+    body: Object.entries(expenses).map(([k, v]) => [k, money(v)]),
+    headStyles: { ...tableTheme.headStyles, textColor: C.orange },
+    columnStyles: { 1: { halign: 'right', fontStyle: 'bold' } }
   })
   autoTable(doc, {
-    startY: (doc.lastAutoTable?.finalY || 90) + 10,
+    ...tableTheme,
+    startY: nextTableY(),
     head: [['Categoria de entrada', 'Total']],
-    body: Object.entries(incomes).map(([k, v]) => [k, money(v)])
+    body: Object.entries(incomes).map(([k, v]) => [k, money(v)]),
+    columnStyles: { 1: { halign: 'right', fontStyle: 'bold' } }
   })
 
+  paintChrome()
   doc.save(`virecmg-${profile.name}-${month}.pdf`)
 }
 
@@ -834,7 +1016,7 @@ function bind() {
         <table>
           <thead><tr><th>Data</th><th>Descricao</th><th>Tipo</th><th>Categoria</th><th>Valor</th></tr></thead>
           <tbody>
-            ${rows.slice(0, 8).map((r) => `<tr><td>${r.date}</td><td>${r.description}</td><td>${r.type}</td><td>${r.category}</td><td>${money(r.amount)}</td></tr>`).join('')}
+            ${rows.slice(0, 8).map((r, i) => `<tr style="--i:${i}"><td>${r.date}</td><td>${r.description}</td><td>${r.type}</td><td>${r.category}</td><td>${money(r.amount)}</td></tr>`).join('')}
           </tbody>
         </table>
       </div>
